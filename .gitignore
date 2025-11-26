@@ -1,0 +1,31 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+venv/
+env/
+
+# Data folders
+documents/raw_documents/*
+documents/processed_documents/*
+documents/vector_data/*
+data/
+markdown/
+chroma_db/
+
+# Keep folder structure
+!documents/raw_documents/.gitkeep
+!documents/processed_documents/.gitkeep
+!documents/vector_data/.gitkeep
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
