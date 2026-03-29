@@ -7,15 +7,17 @@ __pycache__/
 venv/
 env/
 
-# Data folders
+# RAG Data
 documents/raw_documents/*
 documents/processed_documents/*
 documents/vector_data/*
+
+# Ignore legacy folders
 data/
 markdown/
 chroma_db/
 
-# Keep folder structure
+# Keep folder structure with .gitkeep
 !documents/raw_documents/.gitkeep
 !documents/processed_documents/.gitkeep
 !documents/vector_data/.gitkeep
