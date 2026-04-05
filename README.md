@@ -6,7 +6,8 @@ A professional, privacy-first, and fully offline Retrieval-Augmented Generation 
 
 ## ✨ Features
 
-- **Modern Chat Interface**: ChatGPT-style message bubbles with distinct user/AI alignment.
+- **Real-Time Streaming**: ChatGPT-style message bubbles with a live "typing" effect using Python Generators.
+- **Instant Source Attribution**: Displays used documents immediately at the start of the response stream.
 - **IDE Layout**: Integrated Activity Bar, Sidebar (Explorer/Search), and Terminal Panel for real-time logs.
 - **Deep Document Retrieval**: Optimized search depth (k=12) ensures the AI synthesizes information across multiple documents.
 - **High-Performance Parsing**: Powered by **Docling** for accurate PDF and DOCX conversion.
@@ -15,12 +16,23 @@ A professional, privacy-first, and fully offline Retrieval-Augmented Generation 
 
 ---
 
+## 🏗️ Responsive Architecture
+
+The project has been upgraded from a static request-response model to an asynchronous streaming model:
+
+1.  **Backend Generators**: The core AI logic uses Python `yield` statements to "drip" tokens as they are produced by the LLM.
+2.  **FastAPI Streaming**: The API utilizes `StreamingResponse` to maintain an open connection with the frontend.
+3.  **Frontend Stream Reader**: The React frontend uses the `ReadableStream` API to process incoming chunks and update the UI word-by-word, drastically reducing perceived latency.
+
+---
+
 ## 🛠️ Technology Stack
 
 | Component | Technology |
 | :--- | :--- |
 | **Frontend** | React, Vite, TypeScript, Lucide Icons |
-| **Backend** | FastAPI, Python 3.10+ |
+| **Backend** | FastAPI, Python 3.10+, Generator Functions |
+| **Streaming** | ReadableStream API, StreamingResponse |
 | **Document Parsing** | IBM Docling |
 | **Vector Database** | ChromaDB |
 | **LLM Engine** | Ollama (Mistral / Nomic-Embed-Text) |
