@@ -8,36 +8,40 @@ const TerminalPanel: React.FC = () => {
     const scrollRef = useRef<HTMLDivElement>(null);
 
     useEffect(() => {
-        // Connect to the backend WebSocket
-        const socket = new WebSocket('ws://localhost:8080/ws/logs');
+        let socket: WebSocket | null = null;
+        let reconnectTimeout: ReturnType<typeof setTimeout> | null = null;
 
-        socket.onopen = () => {
-            setLogs(prev => [...prev, "[SUCCESS] Real-time log connection established."]);
+        const connect = () => {
+            // Using 127.0.0.1 instead of localhost for better compatibility
+            socket = new WebSocket('ws://127.0.0.1:8080/ws/logs');
+
+            socket.onopen = () => {
+                setLogs(prev => [...prev, "[SUCCESS] Real-time log connection established."]);
+            };
+
+            socket.onmessage = (event) => {
+                setLogs(prev => {
+                    const newLogs = [...prev, event.data];
+                    return newLogs.slice(-100);
+                });
+            };
+
+            socket.onerror = () => {
+                // Silently handle error here, the onclose will trigger the reconnect
+            };
+
+            socket.onclose = () => {
+                setLogs(prev => [...prev.slice(-100), "[INFO] Connection lost. Retrying in 5s..."]);
+                // Attempt to reconnect after 5 seconds
+                reconnectTimeout = setTimeout(connect, 5000);
+            };
         };
 
-        socket.onmessage = (event) => {
-            setLogs(prev => {
-                const newLogs = [...prev, event.data];
-                // Limit to last 100 logs for performance
-                return newLogs.slice(-100);
-            });
-        };
-
-        socket.onerror = () => {
-            // Add a small delay for error reporting to avoid flashing on normal fast reloads
-            setTimeout(() => {
-                if (socket.readyState !== WebSocket.OPEN) {
-                    setLogs(prev => [...prev.slice(-100), "[ERROR] WebSocket connection failed. Is the backend running?"]);
-                }
-            }, 2000);
-        };
-
-        socket.onclose = () => {
-            setLogs(prev => [...prev.slice(-100), "[INFO] Log stream disconnected."]);
-        };
+        connect();
 
         return () => {
-            socket.close();
+            if (socket) socket.close();
+            if (reconnectTimeout) clearTimeout(reconnectTimeout);
         };
     }, []);
 
