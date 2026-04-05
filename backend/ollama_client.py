@@ -44,6 +44,35 @@ class OllamaEmbeddingFunction:
             raise RuntimeError(f"Ollama embedding error at {url}: {e}")
 
 
+def ollama_generate_stream(prompt: str):
+    """
+    Call Ollama /api/generate endpoint and yield response tokens.
+    """
+    base = ollama_config.base_url.rstrip("/")
+    url = f"{base}/api/generate"
+    
+    payload = {
+        "model": ollama_config.chat_model,
+        "prompt": prompt,
+        "stream": True,
+    }
+    
+    try:
+        # Use stream=True to get tokens as they arrive
+        with requests.post(url, json=payload, timeout=300, stream=True) as resp:
+            resp.raise_for_status()
+            for line in resp.iter_lines():
+                if line:
+                    chunk = json.loads(line.decode('utf-8'))
+                    token = chunk.get("response", "")
+                    if token:
+                        yield token
+                    if chunk.get("done"):
+                        break
+                        
+    except Exception as e:
+        yield f"\n[STREAM ERROR] {str(e)}"
+
 def ollama_generate(prompt: str) -> str:
     """
     Call Ollama /api/generate endpoint and return the response text.

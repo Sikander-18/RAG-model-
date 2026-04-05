@@ -1,6 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Send, User, Bot, Loader2 } from 'lucide-react';
-import axios from 'axios';
+import { Send, Bot, Loader2 } from 'lucide-react';
 
 interface Message {
     type: 'user' | 'bot';
@@ -32,15 +31,72 @@ const ChatArea: React.FC = () => {
         setInput('');
         setLoading(true);
 
+        // Add a placeholder bot message that we will update
+        setMessages(prev => [...prev, { type: 'bot', content: '' }]);
+
         try {
-            const response = await axios.post('http://localhost:8080/query', { query: userMsg });
-            setMessages(prev => [...prev, { 
-                type: 'bot', 
-                content: response.data.answer,
-                sources: response.data.sources 
-            }]);
+            const response = await fetch('http://localhost:8080/query', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ query: userMsg })
+            });
+
+            if (!response.ok) throw new Error('Network response was not ok');
+            if (!response.body) throw new Error('No response body');
+
+            const reader = response.body.getReader();
+            const decoder = new TextDecoder();
+            let accumulatedText = '';
+            let sourcesCaptured = false;
+
+            while (true) {
+                const { done, value } = await reader.read();
+                if (done) break;
+
+                const chunk = decoder.decode(value, { stream: true });
+                
+                // Check for metadata separator
+                if (!sourcesCaptured && chunk.includes('###SOURCES###')) {
+                    const parts = chunk.split('###SOURCES###');
+                    try {
+                        const metadata = JSON.parse(parts[0]);
+                        setMessages(prev => {
+                            const newMessages = [...prev];
+                            const lastIdx = newMessages.length - 1;
+                            newMessages[lastIdx] = { ...newMessages[lastIdx], sources: metadata.sources };
+                            return newMessages;
+                        });
+                    } catch (e) {
+                        console.error("Metadata parse error", e);
+                    }
+                    
+                    // The rest of the chunk (if any) is actual text
+                    const remainingText = parts.slice(1).join('###SOURCES###');
+                    if (remainingText) {
+                        accumulatedText += remainingText;
+                        setLoading(false); // Stop loading spinner once text starts
+                    }
+                } else {
+                    accumulatedText += chunk;
+                    setLoading(false);
+                }
+
+                // Update the last bot message with accumulated text
+                setMessages(prev => {
+                    const newMessages = [...prev];
+                    const lastIdx = newMessages.length - 1;
+                    newMessages[lastIdx] = { ...newMessages[lastIdx], content: accumulatedText };
+                    return newMessages;
+                });
+            }
+
         } catch (error) {
-            setMessages(prev => [...prev, { type: 'bot', content: "[ERROR] Failed to connect to the backend server. Please ensure the API is running." }]);
+            setMessages(prev => {
+                const newMessages = [...prev];
+                const lastIdx = newMessages.length - 1;
+                newMessages[lastIdx] = { type: 'bot', content: "[ERROR] Failed to connect to the backend server. Please ensure the API is running." };
+                return newMessages;
+            });
         } finally {
             setLoading(false);
         }

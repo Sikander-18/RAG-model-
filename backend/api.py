@@ -6,10 +6,11 @@ from typing import List
 
 from fastapi import FastAPI, UploadFile, File, HTTPException, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 
 from ingest import ingest_file, ensure_dirs, delete_from_chroma
-from rag_retriever import generate_answer
+from rag_retriever import generate_answer, generate_answer_stream
 from rag_config import paths
 
 app = FastAPI(title="RAG Backend API")
@@ -74,14 +75,17 @@ async def websocket_endpoint(websocket: WebSocket):
     except WebSocketDisconnect:
         manager.disconnect(websocket)
 
-@app.post("/query", response_model=QueryResponse)
+@app.post("/query")
 async def query_rag(request: QueryRequest):
-    """Generate an answer from documents based on the query."""
+    """Generate an answer from documents based on the query with streaming."""
     try:
         await log_to_frontend(f"Processing query: '{request.query}'...")
-        answer, metadatas = generate_answer(request.query)
-        await log_to_frontend(f"Answer generated successfully.", "success")
-        return QueryResponse(answer=answer, sources=metadatas)
+        
+        # We use StreamingResponse to send tokens one by one
+        return StreamingResponse(
+            generate_answer_stream(request.query),
+            media_type="text/plain"
+        )
     except Exception as e:
         await log_to_frontend(f"Query error: {str(e)}", "error")
         raise HTTPException(status_code=500, detail=str(e))
