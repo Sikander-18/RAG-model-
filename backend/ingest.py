@@ -150,6 +150,15 @@ def ingest_folder(folder: str | None = None) -> int:
     return total_added
 
 
+def delete_from_chroma(filename: str) -> None:
+    """
+    Remove all chunks associated with a specific source filename from ChromaDB.
+    """
+    _, collection = init_chroma()
+    # Delete based on the metadata 'source' field which matches Path(md_path).name
+    collection.delete(where={"source": filename})
+
+
 if __name__ == "__main__":
     ensure_dirs()
     added = ingest_folder()
